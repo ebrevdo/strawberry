@@ -4,53 +4,16 @@ import re
 import typing
 import warnings
 from decimal import Decimal
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Set, Tuple, Union, cast
 
-from mypy.nodes import (
-    ARG_OPT,
-    ARG_STAR2,
-    GDEF,
-    MDEF,
-    Argument,
-    AssignmentStmt,
-    Block,
-    CallExpr,
-    CastExpr,
-    FuncDef,
-    IndexExpr,
-    MemberExpr,
-    NameExpr,
-    PassStmt,
-    SymbolTableNode,
-    TupleExpr,
-    TypeAlias,
-    Var,
-)
-from mypy.plugin import (
-    Plugin,
-    SemanticAnalyzerPluginInterface,
-)
+from mypy.nodes import (ARG_OPT, ARG_STAR2, GDEF, MDEF, Argument, AssignmentStmt, Block,
+                        CallExpr, CastExpr, FuncDef, IndexExpr, MemberExpr, NameExpr,
+                        PassStmt, SymbolTableNode, TupleExpr, TypeAlias, Var)
+from mypy.plugin import Plugin, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import _get_argument, add_method
 from mypy.semanal_shared import set_callable_name
-from mypy.types import (
-    AnyType,
-    CallableType,
-    Instance,
-    NoneType,
-    TypeOfAny,
-    TypeVarType,
-    UnionType,
-)
+from mypy.types import (AnyType, CallableType, Instance, NoneType, TypeOfAny,
+                        TypeVarType, UnionType)
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 
@@ -78,12 +41,9 @@ except ImportError:
 
 if TYPE_CHECKING:
     from mypy.nodes import ClassDef, Expression
-    from mypy.plugins import (  # type: ignore
-        AnalyzeTypeContext,
-        CheckerPluginInterface,
-        ClassDefContext,
-        DynamicClassDefContext,
-    )
+    from mypy.plugins import (AnalyzeTypeContext,  # type: ignore
+                              CheckerPluginInterface, ClassDefContext,
+                              DynamicClassDefContext)
     from mypy.types import Type
 
 
@@ -481,7 +441,14 @@ def strawberry_pydantic_class_callback(ctx: ClassDefContext) -> None:
                         # Based on pydantic's default value
                         # https://github.com/pydantic/pydantic/pull/9606/files#diff-469037bbe55bbf9aa359480a16040d368c676adad736e133fb07e5e20d6ac523R1066
                         extra["force_typevars_invariant"] = False
-
+                    if PYDANTIC_VERSION >= (2, 9, 0):
+                        extra["model_strict"] = model_type.type.metadata[
+                            PYDANTIC_METADATA_KEY
+                        ]["config"].get("strict", False)
+                        extra["is_root_model_root"] = any(
+                            "pydantic.root_model.RootModel" in base.fullname
+                            for base in model_type.type.mro[:-1]
+                        )
                 add_method(
                     ctx,
                     "to_pydantic",
